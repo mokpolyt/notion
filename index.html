@@ -3,118 +3,147 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Workspace table</title>
+<title>Repurpose plan</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>
 :root{--bg:#fbfbfa;--ink:#2b2a28;--mute:#8a8780;--line:#e8e6e1;--hover:#f3f2ef;--accent:#2f6f5e;--panel:#fff;--danger:#b4432f}
 @media (prefers-color-scheme:dark){:root{--bg:#191918;--ink:#ebe9e4;--mute:#8f8c85;--line:#2e2d2b;--hover:#232321;--accent:#6fbfa8;--panel:#1f1f1e;--danger:#e0836f}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
-main{max-width:980px;margin:0 auto;padding:48px 24px}
+main{max-width:1060px;margin:0 auto;padding:48px 24px}
 h1{font-size:32px;margin:0 0 4px;letter-spacing:-.02em}
 .sub{color:var(--mute);margin:0 0 24px}
 .bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 input,select,textarea,button{font:inherit;color:inherit}
 .bar input,.bar select,.field input,.field select,.field textarea{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px 10px}
-.bar input{flex:1;min-width:180px}
+.bar input{flex:1;min-width:200px}
 button{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:7px 12px;cursor:pointer}
 button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 button.danger{color:var(--danger)}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .wrap{overflow-x:auto;border-top:1px solid var(--line)}
-table{width:100%;border-collapse:collapse;min-width:640px}
+table{width:100%;border-collapse:collapse;min-width:760px}
 th{text-align:left;font-weight:500;color:var(--mute);padding:8px 10px;border-bottom:1px solid var(--line);font-size:13px}
-td{padding:9px 10px;border-bottom:1px solid var(--line)}
+td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+td.src{color:var(--mute);font-size:14px}
 tbody tr{cursor:pointer}tbody tr:hover,tbody tr.sel{background:var(--hover)}
-.tag{display:inline-block;padding:1px 9px;border-radius:99px;font-size:13px;border:1px solid var(--line)}
-.Done{background:color-mix(in srgb,var(--accent) 18%,transparent)}
-.High{color:var(--danger)}
+.tag{display:inline-block;padding:1px 9px;border-radius:99px;font-size:13px;border:1px solid var(--line);white-space:nowrap}
+.Ready,.Scheduled{background:color-mix(in srgb,var(--accent) 12%,transparent)}
+.Published{background:color-mix(in srgb,var(--accent) 28%,transparent)}
+.late{color:var(--danger)}
 .empty{padding:32px 10px;color:var(--mute)}
 .scrim{position:fixed;inset:0;background:rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .25s}
 .scrim.open{opacity:1;pointer-events:auto}
-aside{position:fixed;top:0;right:0;height:100%;width:min(440px,100%);background:var(--panel);border-left:1px solid var(--line);
+aside{position:fixed;top:0;right:0;height:100%;width:min(460px,100%);background:var(--panel);border-left:1px solid var(--line);
   transform:translateX(100%);transition:transform .3s cubic-bezier(.2,.8,.2,1);padding:24px;overflow-y:auto;box-shadow:-8px 0 24px rgba(0,0,0,.08)}
 aside.open{transform:translateX(0)}
 .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
 .field{display:block;margin-bottom:14px}
 .field span{display:block;color:var(--mute);font-size:13px;margin-bottom:4px}
 .field input,.field select,.field textarea{width:100%}
-textarea{min-height:120px;resize:vertical}
-.actions{display:flex;gap:8px;justify-content:space-between;margin-top:20px}
+textarea{min-height:110px;resize:vertical}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.actions{display:flex;gap:8px;justify-content:space-between;margin-top:20px;flex-wrap:wrap}
+.actions div{display:flex;gap:8px}
 #msg{color:var(--mute);font-size:13px;margin-top:12px}
 @media (prefers-reduced-motion:reduce){aside,.scrim{transition:none}}
 </style>
 </head>
 <body>
 <main>
-  <h1>Workspace table</h1>
+  <h1>Repurpose plan</h1>
   <p class="sub" id="mode"></p>
   <div class="bar">
-    <input id="q" type="search" placeholder="Search by title or owner">
-    <select id="fs"><option value="">All statuses</option><option>Todo</option><option>In progress</option><option>Done</option></select>
-    <select id="fp"><option value="">All priorities</option><option>Low</option><option>Medium</option><option>High</option></select>
-    <button class="primary" id="add">New row</button>
+    <input id="q" type="search" placeholder="Search by piece, source or owner">
+    <select id="fs"></select><select id="fc"></select><select id="ff"></select>
+    <button class="primary" id="add">New piece</button>
   </div>
   <div class="wrap"><table>
-    <thead><tr><th>Title</th><th>Status</th><th>Priority</th><th>Owner</th><th>Due</th></tr></thead>
+    <thead><tr><th>Piece</th><th>Source</th><th>Format</th><th>Channel</th><th>Status</th><th>Publish date</th></tr></thead>
     <tbody id="rows"></tbody>
-  </table><div class="empty" id="empty" hidden>No rows match. Clear the filters or add a new row.</div></div>
+  </table><div class="empty" id="empty" hidden>No pieces match. Clear the filters or add a new piece.</div></div>
 </main>
 
 <div class="scrim" id="scrim"></div>
 <aside id="panel" aria-hidden="true">
-  <div class="head"><strong id="ptitle">Row details</strong><button id="close" aria-label="Close panel">Close</button></div>
-  <label class="field"><span>Title</span><input id="f_title"></label>
-  <label class="field"><span>Status</span><select id="f_status"><option>Todo</option><option>In progress</option><option>Done</option></select></label>
-  <label class="field"><span>Priority</span><select id="f_priority"><option>Low</option><option>Medium</option><option>High</option></select></label>
+  <div class="head"><strong id="ptitle">Piece details</strong><button id="close" aria-label="Close panel">Close</button></div>
+  <label class="field"><span>Piece</span><input id="f_title" placeholder="e.g. 60-second clip of the best tip"></label>
+  <label class="field"><span>Source (original content)</span><input id="f_source" list="sources" placeholder="e.g. Podcast ep. 12"></label>
+  <datalist id="sources"></datalist>
+  <div class="two">
+    <label class="field"><span>Format</span><select id="f_format"></select></label>
+    <label class="field"><span>Channel</span><select id="f_channel"></select></label>
+  </div>
+  <div class="two">
+    <label class="field"><span>Status</span><select id="f_status"></select></label>
+    <label class="field"><span>Publish date</span><input id="f_publish_date" type="date"></label>
+  </div>
   <label class="field"><span>Owner</span><input id="f_owner"></label>
-  <label class="field"><span>Due date</span><input id="f_due_date" type="date"></label>
-  <label class="field"><span>Notes</span><textarea id="f_notes"></textarea></label>
-  <div class="actions"><button class="danger" id="del">Delete row</button><button class="primary" id="save">Save changes</button></div>
+  <label class="field"><span>Link to draft or post</span><input id="f_link" type="url" placeholder="https://"></label>
+  <label class="field"><span>Notes</span><textarea id="f_notes" placeholder="Hook, timestamps, caption ideas"></textarea></label>
+  <div class="actions">
+    <button class="danger" id="del">Delete piece</button>
+    <div><button id="dup">Duplicate</button><button class="primary" id="save">Save changes</button></div>
+  </div>
   <div id="msg" role="status"></div>
 </aside>
 
 <script>
 // 1) Paste your Supabase values (Project Settings -> API). Leave empty to try the demo with sample data.
-const SUPABASE_URL = "https://nuzigytcmwqwjzufosxo.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_QCQN5gFX7HnDBSPWe1TsRQ_4GJmzVrJ";
+const SUPABASE_URL = "";
+const SUPABASE_ANON_KEY = "";
+const TABLE = "repurpose_plan";
+
+const STATUSES = ["Idea","Drafting","Ready","Scheduled","Published"];
+const FORMATS  = ["Short video","Carousel","Thread","Newsletter","Blog post","Podcast clip","Quote graphic","Long video"];
+const CHANNELS = ["Instagram","TikTok","LinkedIn","X","YouTube","Email","Website","Facebook"];
+const fields = ["title","source","format","channel","status","publish_date","owner","link","notes"];
 
 const $ = id => document.getElementById(id);
 const live = SUPABASE_URL && SUPABASE_ANON_KEY;
 const db = live ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 $("mode").textContent = live ? "Connected to Supabase." : "Demo mode: data resets on refresh. Add your Supabase keys to save for real.";
 
+const opts = (a, first) => (first ? `<option value="">${first}</option>` : "") + a.map(x => `<option>${x}</option>`).join("");
+$("fs").innerHTML = opts(STATUSES,"All statuses"); $("fc").innerHTML = opts(CHANNELS,"All channels"); $("ff").innerHTML = opts(FORMATS,"All formats");
+$("f_status").innerHTML = opts(STATUSES); $("f_format").innerHTML = opts(FORMATS); $("f_channel").innerHTML = opts(CHANNELS);
+
+const d = n => { const t = new Date(); t.setDate(t.getDate()+n); return t.toISOString().slice(0,10); };
+const S = "Podcast ep. 12: Pricing mistakes";
 let items = live ? [] : [
-  {id:"1",title:"Write project brief",status:"Done",priority:"High",owner:"Dewi",due_date:"2026-10-11",notes:"Goals, scope, and timeline."},
-  {id:"2",title:"Design table view",status:"In progress",priority:"Medium",owner:"Budi",due_date:"2026-10-16",notes:"Filters and a side panel."},
-  {id:"3",title:"Connect Supabase",status:"Todo",priority:"High",owner:"Sari",due_date:"2026-10-18",notes:""}
+  {id:"1",title:"60-second clip: biggest pricing mistake",source:S,format:"Short video",channel:"Instagram",status:"Ready",publish_date:d(1),owner:"Dewi",notes:"Cut from minute 14. Add captions."},
+  {id:"2",title:"3 quotes as carousel",source:S,format:"Carousel",channel:"LinkedIn",status:"Drafting",publish_date:d(3),owner:"Budi",notes:"Pick quotes with numbers."},
+  {id:"3",title:"Key lessons thread",source:S,format:"Thread",channel:"X",status:"Idea",publish_date:d(5),owner:"Sari"},
+  {id:"4",title:"Blog recap with timestamps",source:S,format:"Blog post",channel:"Website",status:"Published",publish_date:d(-2),owner:"Andi"}
 ];
 let current = null;
-const fields = ["title","status","priority","owner","due_date","notes"];
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
 async function load(){
   if(!live) return render();
-  const {data,error} = await db.from("items").select("*").order("created_at",{ascending:false});
+  const {data,error} = await db.from(TABLE).select("*").order("publish_date",{ascending:true,nullsFirst:false});
   if(error) return say("Could not load: " + error.message);
   items = data; render();
 }
 
 function render(){
-  const q = $("q").value.trim().toLowerCase(), s = $("fs").value, p = $("fp").value;
+  const q = $("q").value.trim().toLowerCase(), s = $("fs").value, c = $("fc").value, f = $("ff").value, today = d(0);
   const list = items.filter(r =>
-    (!q || (r.title+" "+(r.owner||"")).toLowerCase().includes(q)) && (!s || r.status===s) && (!p || r.priority===p));
+    (!q || [r.title,r.source,r.owner].join(" ").toLowerCase().includes(q)) &&
+    (!s || r.status===s) && (!c || r.channel===c) && (!f || r.format===f));
   $("rows").innerHTML = list.map(r => `<tr data-id="${esc(r.id)}" class="${current&&current.id===r.id?"sel":""}">
-    <td>${esc(r.title)}</td><td><span class="tag ${esc(r.status)}">${esc(r.status)}</span></td>
-    <td class="${esc(r.priority)}">${esc(r.priority)}</td><td>${esc(r.owner)}</td><td>${esc(r.due_date)}</td></tr>`).join("");
+    <td>${esc(r.title)}</td><td class="src">${esc(r.source)}</td><td>${esc(r.format)}</td><td>${esc(r.channel)}</td>
+    <td><span class="tag ${esc(r.status)}">${esc(r.status)}</span></td>
+    <td class="${r.publish_date && r.publish_date<today && r.status!=="Published" ? "late":""}">${esc(r.publish_date)}</td></tr>`).join("");
   $("empty").hidden = list.length > 0;
+  $("sources").innerHTML = [...new Set(items.map(r => r.source).filter(Boolean))].map(x => `<option value="${esc(x)}">`).join("");
 }
 
 function openPanel(row){
   current = row;
-  $("ptitle").textContent = row.id ? "Row details" : "New row";
+  $("ptitle").textContent = row.id ? "Piece details" : "New piece";
   fields.forEach(f => $("f_"+f).value = row[f] ?? "");
-  $("del").hidden = !row.id; say("");
+  $("del").hidden = !row.id; $("dup").hidden = !row.id; say("");
   $("panel").classList.add("open"); $("scrim").classList.add("open");
   $("panel").setAttribute("aria-hidden","false"); render();
   $("f_title").focus();
@@ -129,8 +158,8 @@ async function save(){
   const row = {}; fields.forEach(f => row[f] = $("f_"+f).value || null);
   if(!row.title) return say("Add a title before saving.");
   if(live){
-    const res = current.id ? await db.from("items").update(row).eq("id",current.id)
-                           : await db.from("items").insert(row);
+    const res = current.id ? await db.from(TABLE).update(row).eq("id",current.id)
+                           : await db.from(TABLE).insert(row);
     if(res.error) return say("Could not save: " + res.error.message);
     await load();
   } else if(current.id){
@@ -140,24 +169,30 @@ async function save(){
 }
 
 async function remove(){
-  if(!current.id || !confirm("Delete this row?")) return;
+  if(!current.id || !confirm("Delete this piece?")) return;
   if(live){
-    const {error} = await db.from("items").delete().eq("id",current.id);
+    const {error} = await db.from(TABLE).delete().eq("id",current.id);
     if(error) return say("Could not delete: " + error.message);
     await load();
   } else items = items.filter(r => r.id!==current.id);
   closePanel();
 }
 
+function duplicate(){
+  const r = items.find(x => x.id===current.id);
+  openPanel({...r, id:undefined, title:r.title+" (copy)", status:"Idea", publish_date:null, link:null});
+  say("Change the format or channel, then save.");
+}
+
 $("rows").addEventListener("click", e => {
   const tr = e.target.closest("tr"); if(!tr) return;
   openPanel(items.find(r => r.id===tr.dataset.id));
 });
-$("add").onclick = () => openPanel({status:"Todo",priority:"Medium"});
-$("save").onclick = save; $("del").onclick = remove;
+$("add").onclick = () => openPanel({status:"Idea",format:FORMATS[0],channel:CHANNELS[0]});
+$("save").onclick = save; $("del").onclick = remove; $("dup").onclick = duplicate;
 $("close").onclick = closePanel; $("scrim").onclick = closePanel;
 document.addEventListener("keydown", e => { if(e.key==="Escape") closePanel(); });
-["q","fs","fp"].forEach(id => $(id).addEventListener("input", render));
+["q","fs","fc","ff"].forEach(id => $(id).addEventListener("input", render));
 load();
 </script>
 </body>
