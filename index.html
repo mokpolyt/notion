@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Workspace table</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+:root{--bg:#fbfbfa;--ink:#2b2a28;--mute:#8a8780;--line:#e8e6e1;--hover:#f3f2ef;--accent:#2f6f5e;--panel:#fff;--danger:#b4432f}
+@media (prefers-color-scheme:dark){:root{--bg:#191918;--ink:#ebe9e4;--mute:#8f8c85;--line:#2e2d2b;--hover:#232321;--accent:#6fbfa8;--panel:#1f1f1e;--danger:#e0836f}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:980px;margin:0 auto;padding:48px 24px}
+h1{font-size:32px;margin:0 0 4px;letter-spacing:-.02em}
+.sub{color:var(--mute);margin:0 0 24px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+input,select,textarea,button{font:inherit;color:inherit}
+.bar input,.bar select,.field input,.field select,.field textarea{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px 10px}
+.bar input{flex:1;min-width:180px}
+button{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:7px 12px;cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.danger{color:var(--danger)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{overflow-x:auto;border-top:1px solid var(--line)}
+table{width:100%;border-collapse:collapse;min-width:640px}
+th{text-align:left;font-weight:500;color:var(--mute);padding:8px 10px;border-bottom:1px solid var(--line);font-size:13px}
+td{padding:9px 10px;border-bottom:1px solid var(--line)}
+tbody tr{cursor:pointer}tbody tr:hover,tbody tr.sel{background:var(--hover)}
+.tag{display:inline-block;padding:1px 9px;border-radius:99px;font-size:13px;border:1px solid var(--line)}
+.Done{background:color-mix(in srgb,var(--accent) 18%,transparent)}
+.High{color:var(--danger)}
+.empty{padding:32px 10px;color:var(--mute)}
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .25s}
+.scrim.open{opacity:1;pointer-events:auto}
+aside{position:fixed;top:0;right:0;height:100%;width:min(440px,100%);background:var(--panel);border-left:1px solid var(--line);
+  transform:translateX(100%);transition:transform .3s cubic-bezier(.2,.8,.2,1);padding:24px;overflow-y:auto;box-shadow:-8px 0 24px rgba(0,0,0,.08)}
+aside.open{transform:translateX(0)}
+.head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.field{display:block;margin-bottom:14px}
+.field span{display:block;color:var(--mute);font-size:13px;margin-bottom:4px}
+.field input,.field select,.field textarea{width:100%}
+textarea{min-height:120px;resize:vertical}
+.actions{display:flex;gap:8px;justify-content:space-between;margin-top:20px}
+#msg{color:var(--mute);font-size:13px;margin-top:12px}
+@media (prefers-reduced-motion:reduce){aside,.scrim{transition:none}}
+</style>
+</head>
+<body>
+<main>
+  <h1>Workspace table</h1>
+  <p class="sub" id="mode"></p>
+  <div class="bar">
+    <input id="q" type="search" placeholder="Search by title or owner">
+    <select id="fs"><option value="">All statuses</option><option>Todo</option><option>In progress</option><option>Done</option></select>
+    <select id="fp"><option value="">All priorities</option><option>Low</option><option>Medium</option><option>High</option></select>
+    <button class="primary" id="add">New row</button>
+  </div>
+  <div class="wrap"><table>
+    <thead><tr><th>Title</th><th>Status</th><th>Priority</th><th>Owner</th><th>Due</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table><div class="empty" id="empty" hidden>No rows match. Clear the filters or add a new row.</div></div>
+</main>
+
+<div class="scrim" id="scrim"></div>
+<aside id="panel" aria-hidden="true">
+  <div class="head"><strong id="ptitle">Row details</strong><button id="close" aria-label="Close panel">Close</button></div>
+  <label class="field"><span>Title</span><input id="f_title"></label>
+  <label class="field"><span>Status</span><select id="f_status"><option>Todo</option><option>In progress</option><option>Done</option></select></label>
+  <label class="field"><span>Priority</span><select id="f_priority"><option>Low</option><option>Medium</option><option>High</option></select></label>
+  <label class="field"><span>Owner</span><input id="f_owner"></label>
+  <label class="field"><span>Due date</span><input id="f_due_date" type="date"></label>
+  <label class="field"><span>Notes</span><textarea id="f_notes"></textarea></label>
+  <div class="actions"><button class="danger" id="del">Delete row</button><button class="primary" id="save">Save changes</button></div>
+  <div id="msg" role="status"></div>
+</aside>
+
+<script>
+// 1) Paste your Supabase values (Project Settings -> API). Leave empty to try the demo with sample data.
+const SUPABASE_URL = "https://nuzigytcmwqwjzufosxo.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_QCQN5gFX7HnDBSPWe1TsRQ_4GJmzVrJ";
+
+const $ = id => document.getElementById(id);
+const live = SUPABASE_URL && SUPABASE_ANON_KEY;
+const db = live ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+$("mode").textContent = live ? "Connected to Supabase." : "Demo mode: data resets on refresh. Add your Supabase keys to save for real.";
+
+let items = live ? [] : [
+  {id:"1",title:"Write project brief",status:"Done",priority:"High",owner:"Dewi",due_date:"2026-10-11",notes:"Goals, scope, and timeline."},
+  {id:"2",title:"Design table view",status:"In progress",priority:"Medium",owner:"Budi",due_date:"2026-10-16",notes:"Filters and a side panel."},
+  {id:"3",title:"Connect Supabase",status:"Todo",priority:"High",owner:"Sari",due_date:"2026-10-18",notes:""}
+];
+let current = null;
+const fields = ["title","status","priority","owner","due_date","notes"];
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+async function load(){
+  if(!live) return render();
+  const {data,error} = await db.from("items").select("*").order("created_at",{ascending:false});
+  if(error) return say("Could not load: " + error.message);
+  items = data; render();
+}
+
+function render(){
+  const q = $("q").value.trim().toLowerCase(), s = $("fs").value, p = $("fp").value;
+  const list = items.filter(r =>
+    (!q || (r.title+" "+(r.owner||"")).toLowerCase().includes(q)) && (!s || r.status===s) && (!p || r.priority===p));
+  $("rows").innerHTML = list.map(r => `<tr data-id="${esc(r.id)}" class="${current&&current.id===r.id?"sel":""}">
+    <td>${esc(r.title)}</td><td><span class="tag ${esc(r.status)}">${esc(r.status)}</span></td>
+    <td class="${esc(r.priority)}">${esc(r.priority)}</td><td>${esc(r.owner)}</td><td>${esc(r.due_date)}</td></tr>`).join("");
+  $("empty").hidden = list.length > 0;
+}
+
+function openPanel(row){
+  current = row;
+  $("ptitle").textContent = row.id ? "Row details" : "New row";
+  fields.forEach(f => $("f_"+f).value = row[f] ?? "");
+  $("del").hidden = !row.id; say("");
+  $("panel").classList.add("open"); $("scrim").classList.add("open");
+  $("panel").setAttribute("aria-hidden","false"); render();
+  $("f_title").focus();
+}
+function closePanel(){
+  current = null; $("panel").classList.remove("open"); $("scrim").classList.remove("open");
+  $("panel").setAttribute("aria-hidden","true"); render();
+}
+function say(t){ $("msg").textContent = t; }
+
+async function save(){
+  const row = {}; fields.forEach(f => row[f] = $("f_"+f).value || null);
+  if(!row.title) return say("Add a title before saving.");
+  if(live){
+    const res = current.id ? await db.from("items").update(row).eq("id",current.id)
+                           : await db.from("items").insert(row);
+    if(res.error) return say("Could not save: " + res.error.message);
+    await load();
+  } else if(current.id){
+    Object.assign(items.find(r => r.id===current.id), row);
+  } else items.unshift({...row, id:String(Date.now())});
+  closePanel();
+}
+
+async function remove(){
+  if(!current.id || !confirm("Delete this row?")) return;
+  if(live){
+    const {error} = await db.from("items").delete().eq("id",current.id);
+    if(error) return say("Could not delete: " + error.message);
+    await load();
+  } else items = items.filter(r => r.id!==current.id);
+  closePanel();
+}
+
+$("rows").addEventListener("click", e => {
+  const tr = e.target.closest("tr"); if(!tr) return;
+  openPanel(items.find(r => r.id===tr.dataset.id));
+});
+$("add").onclick = () => openPanel({status:"Todo",priority:"Medium"});
+$("save").onclick = save; $("del").onclick = remove;
+$("close").onclick = closePanel; $("scrim").onclick = closePanel;
+document.addEventListener("keydown", e => { if(e.key==="Escape") closePanel(); });
+["q","fs","fp"].forEach(id => $(id).addEventListener("input", render));
+load();
+</script>
+</body>
+</html>
