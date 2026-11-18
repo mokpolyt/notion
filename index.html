@@ -34,7 +34,7 @@ tbody tr{cursor:pointer}tbody tr:hover,tbody tr.sel{background:var(--hover)}
 .empty{padding:32px 10px;color:var(--mute)}
 .scrim{position:fixed;inset:0;background:rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .25s}
 .scrim.open{opacity:1;pointer-events:auto}
-aside{position:fixed;top:0;right:0;height:100%;width:min(460px,100%);background:var(--panel);border-left:1px solid var(--line);
+aside{position:fixed;top:0;right:0;height:100%;width:max(65vw,min(460px,100%));background:var(--panel);border-left:1px solid var(--line);
   transform:translateX(100%);transition:transform .3s cubic-bezier(.2,.8,.2,1);padding:24px;overflow-y:auto;box-shadow:-8px 0 24px rgba(0,0,0,.08)}
 aside.open{transform:translateX(0)}
 .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
