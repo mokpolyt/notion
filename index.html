@@ -41,7 +41,9 @@ aside.open{transform:translateX(0)}
 .field{display:block;margin-bottom:14px}
 .field span{display:block;color:var(--mute);font-size:13px;margin-bottom:4px}
 .field input,.field select,.field textarea{width:100%}
-textarea{min-height:110px;resize:vertical}
+textarea{min-height:90px;height:220px;resize:vertical}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}
+@media (max-width:800px){.cols{grid-template-columns:1fr}}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .actions{display:flex;gap:8px;justify-content:space-between;margin-top:20px;flex-wrap:wrap}
 .actions div{display:flex;gap:8px}
@@ -67,6 +69,7 @@ textarea{min-height:110px;resize:vertical}
 <div class="scrim" id="scrim"></div>
 <aside id="panel" aria-hidden="true">
   <div class="head"><strong id="ptitle">Piece details</strong><button id="close" aria-label="Close panel">Close</button></div>
+  <div class="cols"><div>
   <label class="field"><span>Piece</span><input id="f_title" placeholder="e.g. 60-second clip of the best tip"></label>
   <label class="field"><span>Source (original content)</span><input id="f_source" list="sources" placeholder="e.g. Podcast ep. 12"></label>
   <datalist id="sources"></datalist>
@@ -80,7 +83,9 @@ textarea{min-height:110px;resize:vertical}
   </div>
   <label class="field"><span>Owner</span><input id="f_owner"></label>
   <label class="field"><span>Link to draft or post</span><input id="f_link" type="url" placeholder="https://"></label>
-  <label class="field"><span>Notes</span><textarea id="f_notes" placeholder="Hook, timestamps, caption ideas"></textarea></label>
+  </div>
+  <label class="field notes"><span>Notes</span><textarea id="f_notes" placeholder="Hook, timestamps, caption ideas"></textarea></label>
+  </div>
   <div class="actions">
     <button class="danger" id="del">Delete piece</button>
     <div><button id="dup">Duplicate</button><button class="primary" id="save">Save changes</button></div>
